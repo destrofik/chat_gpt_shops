@@ -1,4 +1,4 @@
-import httpx # Для прокси
+#import httpx  Для прокси
 import os
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
