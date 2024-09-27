@@ -8,7 +8,7 @@ import datetime
 
 from database.connect import db_connect, fio_insert, is_user_in_databse
 from app.generators import gpt
-from app.interface import main_keyboard, open_profile
+from app.interface import main_keyboard, profile_keyboard
 router = Router()
 
 class Generate(StatesGroup):
@@ -22,6 +22,7 @@ class Registration(StatesGroup):
 class Interface(StatesGroup):
     open_profile = State()
     open_menu = State()
+
 
 
 @router.message(CommandStart())
@@ -57,21 +58,42 @@ async def open_menu(message: Message, state: FSMContext):
     await message.answer('Запуск сообщения по команде /menu ', reply_markup=await main_keyboard(message.from_user.id))
     #await state.set_state(Interface.open_menu)
 
+
+
 # ПРОФИЛЬ КЛИЕНТА:
-@router.callback_query(F.data == 'profile')
-async def show_profile_settings(call: CallbackQuery, state: FSMContext):
-    await call.answer('Открытие меню по команде Профиль ', reply_markup=await open_profile())
+
+# @router.callback_query(F.data == 'profile')
+# async def show_profile_settings(call: CallbackQuery, state: FSMContext):
+#     await call.answer('Открытие меню по команде Профиль ', reply_markup=await open_profile())
+
+@router.message(lambda message: message.text == "Профиль")
+async def open_profile_menu(message: Message, state: FSMContext):
+    kb = await profile_keyboard()
+    await message.answer("Профиль: Выберите действие", reply_markup=kb)
+    await state.set_state(Interface.open_profile)
+
+@router.message(Interface.open_profile, lambda message: message.text not in ['Редактировать профиль', 'Посмотреть профиль', 'Назад в меню', 'ХЗ'])
+async def profile_warning(message: Message):
+    await message.answer('Вернитесь в главное меню, если хотите написать боту')
 
 
-# @router.message(StateFilter(None), Command('profile'))
-# async def show_profile(message: Message, state: FSMContext):
-#     await open_profile(message)
-#     await state.set_state(Interface.open_profile)
+# Обработчик для кнопки "Назад в меню", возвращает основную клавиатуру
+@router.message(lambda message: message.text == "Назад в меню")
+async def go_back_to_main_menu(message: Message):
+    kb = await main_keyboard(message.from_user.id)
+    await message.answer("Вы вернулись в главное меню", reply_markup=kb)
 
-@router.message(Interface.open_profile, F.text)
-async def profile(message: Message, state: FSMContext):
-    if F.text == 'Заказы': pass
-    elif F.text == 'Редактировать профиль': pass
+# Обработчик для других кнопок (например, "Настройки", "О нас")
+@router.message(lambda message: message.text in ["Заказы", "О нас", "Контакты"])
+async def handle_other_buttons(message: Message):
+    if message.text == "Заказы":
+        await message.answer("Заказы: Здесь вы можете посмотреть свои заказы.")
+    elif message.text == "О нас":
+        await message.answer("О нас: Мы команда разработчиков.")
+    elif message.text == "Контакты":
+        await message.answer("Контакты: Вы можете связаться с нами через почту.")
+
+
 
 
 

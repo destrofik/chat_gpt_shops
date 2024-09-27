@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import Message, CallbackQuery
 from aiogram import types
 from aiogram.fsm.context import FSMContext
@@ -17,8 +17,8 @@ from aiogram.fsm.context import FSMContext
 async def main_keyboard(user_telegram_id: int):
 
     kb_list = [
-        [KeyboardButton(text="📖 О нас", callback_data='about_us'), KeyboardButton(text="👤 Профиль", callback_data='profile')],
-        [KeyboardButton(text="Заказы", callback_data='orders'), KeyboardButton(text="Связь с менеджером", callback_data='manager')]
+        [KeyboardButton(text="О нас", callback_data='about_us'), KeyboardButton(text="Профиль", callback_data='profile')],
+        [KeyboardButton(text="Заказы", callback_data='orders'), KeyboardButton(text="Контакты", callback_data='manager')]
     ]
 
     kb = ReplyKeyboardMarkup(
@@ -30,11 +30,14 @@ async def main_keyboard(user_telegram_id: int):
 
     return kb
 
-async def open_profile():
+
+
+async def profile_keyboard():
 
     profile_list = [
         [KeyboardButton(text='Посмотреть профиль', callback_data='show_profile'), KeyboardButton(text="Редактировать профиль", callback_data='edit_profile')],
-        [KeyboardButton(text="ХЗ", callback_data='a'), KeyboardButton(text="ХЗ", callback_data='b')]
+        [KeyboardButton(text="ХЗ", callback_data='a'), KeyboardButton(text="ХЗ", callback_data='b')],
+        [KeyboardButton(text="Назад в меню")]
     ]
 
     profile_kb = ReplyKeyboardMarkup(  # Corrected indentation here
