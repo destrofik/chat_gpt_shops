@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
@@ -8,7 +8,7 @@ import datetime
 
 from database.connect import db_connect, fio_insert, is_user_in_databse
 from app.generators import gpt
-from app.interface import open_profile
+from app.interface import main_keyboard, open_profile
 router = Router()
 
 class Generate(StatesGroup):
@@ -21,6 +21,7 @@ class Registration(StatesGroup):
 
 class Interface(StatesGroup):
     open_profile = State()
+    open_menu = State()
 
 
 @router.message(CommandStart())
@@ -50,11 +51,22 @@ async def insert_fio(message: Message, state: FSMContext):
     await state.clear()
 
 
+# МЕНЮ
+@router.message(StateFilter(None), Command('menu'))
+async def open_menu(message: Message, state: FSMContext):
+    await message.answer('Запуск сообщения по команде /menu ', reply_markup=await main_keyboard(message.from_user.id))
+    #await state.set_state(Interface.open_menu)
+
 # ПРОФИЛЬ КЛИЕНТА:
-@router.message(StateFilter(None), Command('profile'))
-async def show_profile(message: Message, state: FSMContext):
-    await open_profile(message)
-    await state.set_state(Interface.open_profile)
+@router.callback_query(F.data == 'profile')
+async def show_profile_settings(call: CallbackQuery, state: FSMContext):
+    await call.answer('Открытие меню по команде Профиль ', reply_markup=await open_profile())
+
+
+# @router.message(StateFilter(None), Command('profile'))
+# async def show_profile(message: Message, state: FSMContext):
+#     await open_profile(message)
+#     await state.set_state(Interface.open_profile)
 
 @router.message(Interface.open_profile, F.text)
 async def profile(message: Message, state: FSMContext):
