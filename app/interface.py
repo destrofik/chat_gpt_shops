@@ -1,24 +1,14 @@
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.types import Message, CallbackQuery
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 
-# async def open_profile(message: types.Message):
-#
-#     buttons = [
-#         [types.InlineKeyboardButton(text="Редактировать профиль", callback_data='edit_profile')],
-#         [types.InlineKeyboardButton(text="Заказы", callback_data='orders')]
-#     ]
-#
-#     kb = InlineKeyboardMarkup(inline_keyboard=buttons, row_width=1)
-#
-#     await message.answer('Профиль', reply_markup=kb)
 
-async def main_keyboard(user_telegram_id: int):
+async def main_keyboard():
 
     kb_list = [
-        [KeyboardButton(text="О нас", callback_data='about_us'), KeyboardButton(text="Профиль", callback_data='profile')],
-        [KeyboardButton(text="Заказы", callback_data='orders'), KeyboardButton(text="Контакты", callback_data='manager')]
+        [KeyboardButton(text="О нас"), KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Заказы"), KeyboardButton(text="Контакты")]
     ]
 
     kb = ReplyKeyboardMarkup(
@@ -35,9 +25,8 @@ async def main_keyboard(user_telegram_id: int):
 async def profile_keyboard():
 
     profile_list = [
-        [KeyboardButton(text='Посмотреть профиль', callback_data='show_profile'), KeyboardButton(text="Редактировать профиль", callback_data='edit_profile')],
-        [KeyboardButton(text="ХЗ", callback_data='a'), KeyboardButton(text="ХЗ", callback_data='b')],
-        [KeyboardButton(text="Назад в меню")]
+        [KeyboardButton(text='Посмотреть профиль'), KeyboardButton(text="Редактировать профиль")],
+        [KeyboardButton(text="В главное меню")]
     ]
 
     profile_kb = ReplyKeyboardMarkup(  # Corrected indentation here
@@ -48,3 +37,31 @@ async def profile_keyboard():
     )
 
     return profile_kb
+
+async def edit_keyboard():
+
+    edit_list = [
+        [KeyboardButton(text='ФИО'), KeyboardButton(text="Адрес доставки")],
+        [KeyboardButton(text="Назад"), KeyboardButton(text="В главное меню")]
+    ]
+
+    edit_kb = ReplyKeyboardMarkup(  # Corrected indentation here
+        keyboard=edit_list,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder="Редактировать"
+    )
+
+    return edit_kb
+
+
+async def call_manager_support():
+    buttons_list = [
+        [InlineKeyboardButton(text="Менеджер", url='https://t.me/vyacheslav_bikir')],
+        [InlineKeyboardButton(text="Тех. поддержка", url='https://t.me/destrofikk'), InlineKeyboardButton(text="Тех. поддержка", url='https://t.me/Daniil_2004')],
+        [InlineKeyboardButton(text="Hypell", web_app=WebAppInfo(url='https://vk.com/hypell_ru'))]
+    ]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons_list, row_width=1)
+
+    return keyboard
