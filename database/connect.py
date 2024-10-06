@@ -46,10 +46,28 @@ async def edit_fio_profile(user_telegram_id: int, name):
         await connection.execute("UPDATE users_register SET fio = $2 WHERE tg_id = $1",  user_telegram_id, str(name))
     await connection.close()
 
+async def get_products(page: int, limit: int):
+    offset = (page - 1) * limit
+    connection = await asyncpg.connect(os.getenv('POSTGRESQL_URL'))
+
+    products = await connection.fetch(f"""
+        SELECT product_id, name, memory, color, price, country, description 
+        FROM products 
+        ORDER BY product_id 
+        LIMIT {limit} OFFSET {offset}
+    """)
+    
+    await connection.close()
+    return products
+
+async def get_total_products():
+    connection = await asyncpg.connect(os.getenv('POSTGRESQL_URL'))
+    total = await connection.fetchval("SELECT COUNT(*) FROM products")
+    await connection.close()
+    return total
 
 # async def edit_address_profile(user_telegram_id: int):
 #     connection = await asyncpg.connect(os.getenv('POSTGRESQL_URL'))
 #     async with connection.transaction():
 #     await connection.execute("UPDATE users_register SET address = $1",  str(address))
 #     await connection.close()
-
