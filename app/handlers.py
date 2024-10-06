@@ -1,13 +1,13 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+from aiogram.utils import markdown as md
 
-
-from database.connect import fio_insert, is_user_in_database, view_user_profile, edit_fio_profile
+from database.connect import fio_insert, is_user_in_database, view_user_profile, edit_fio_profile, get_products, get_total_products
 from app.generators import gpt
-from app.interface import main_keyboard, profile_keyboard, call_manager_support, edit_keyboard
+from app.interface import main_keyboard, profile_keyboard, call_manager_support, edit_keyboard, get_pagination_keyboard
 router = Router()
 
 class Generate(StatesGroup):
@@ -23,6 +23,9 @@ class Interface(StatesGroup):
     edit_profile = State()
     open_menu = State()
     edit_fio = State()
+    
+class AssortmentState(StatesGroup):
+    page = State()
 
 class GPT(StatesGroup):
     GPT_enable = State()
@@ -33,7 +36,7 @@ class GPT(StatesGroup):
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     await message.answer('Добро пожаловать! Я нейроассистент Hypell. Чем могу помочь?')
-    await message.answer('Список быстрых команд:\nРегистрация - /registration\nПерейти в профиль - /profile\nСвязь с менеджером - /manager')
+    await message.answer('Список быстрых команд:\nРегистрация - /registration\nКаталог - /assortment\n')
     await state.clear()
 
 
@@ -120,6 +123,73 @@ async def go_back_to_profile_menu(message: Message):
     await message.answer("Вы вернулись в Профиль", reply_markup=await profile_keyboard())
 
 
+# Пагинация данных
+async def send_products(message: Message, page: int, state: FSMContext):
+    limit = 3
+    user_data = await state.get_data()
+    
+    # Получаем общее количество товаров один раз
+    total_products = await get_total_products()
+    total_pages = (total_products // limit) + (1 if total_products % limit else 0)
+    
+    # Кешируем текущую страницу и общее количество
+    user_data['total_pages'] = total_pages
+    await state.update_data(**user_data)
+
+    # Получаем товары
+    products = await get_products(page, limit)
+
+    if not products:
+        await message.answer("Нет доступных товаров.")
+        return
+
+    # Форматируем список товаров
+    product_list = "\n\n".join([
+        f"*Название:* `{product['name']}`\n"
+        f"*Память:* `{product['memory']}Gb`\n"
+        f"*Цвет:* `{product['color']}`\n"
+        f"*Цена:* `{product['price']}₽`\n"
+        f"*Страна:* `{product['country']}`\n"
+        for product in products
+    ])
+
+    sent_message_id = user_data.get('sent_message_id')
+    
+    if sent_message_id is None:
+        sent_message = await message.answer(
+            text=f"{product_list}\n",
+            parse_mode='MarkdownV2',
+            reply_markup=get_pagination_keyboard(page, total_pages)
+        )
+        await state.update_data(sent_message_id=sent_message.message_id)
+    else:
+        await message.bot.edit_message_text(
+            text=f"{product_list}\n",
+            parse_mode='MarkdownV2',
+            chat_id=message.chat.id,
+            message_id=sent_message_id,
+            reply_markup=get_pagination_keyboard(page, total_pages)
+        )
+    await state.update_data(page=page)
+
+@router.message(Command('assortment'))
+async def assortment_command(message: Message, state: FSMContext):
+    #await state.set_state(AssortmentState.page)
+    await send_products(message, page=1, state=state)
+
+@router.callback_query()
+async def handle_pagination(callback_query: CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    current_page = user_data.get('page', 1)
+    total_pages = user_data.get('total_pages', 0)  # Получаем общее количество страниц из кеша
+
+    if callback_query.data in ("prev_page", "next_page"):
+        new_page = current_page - 1 if callback_query.data == "prev_page" else current_page + 1
+        new_page = new_page if 1 <= new_page <= total_pages else (total_pages if new_page < 1 else 1)
+
+        await send_products(callback_query.message, page=new_page, state=state)
+    
+    await callback_query.answer()  # Подтверждаем обработку колбека
 
 # КОНТАКТЫ
 
@@ -141,4 +211,3 @@ async def generate(message: Message, state: FSMContext):
     response = await gpt(message.text)
     await message.answer(response.choices[0].message.content)
     await state.clear()
-
