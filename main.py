@@ -3,15 +3,13 @@ import asyncio
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 
-import asyncpg
-
+#from app.training import handle_message
 from app.handlers import router
 
 
 async def main():
     load_dotenv()
     bot = Bot(token=os.getenv('TG_TOKEN'))
-
     dp = Dispatcher()
     dp.include_router(router)
     await dp.start_polling(bot)
