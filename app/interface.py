@@ -1,7 +1,4 @@
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from aiogram.types import Message, CallbackQuery
-from aiogram import types
-from aiogram.fsm.context import FSMContext
 
 
 async def main_keyboard():
@@ -68,8 +65,8 @@ async def call_manager_support():
 
 def get_pagination_keyboard(page: int, total_pages: int):
     buttons_list = [
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="prev_page"), 
-         InlineKeyboardButton(text=f"Стр {page}/{total_pages}", callback_data="current_page"), 
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="prev_page"),
+         InlineKeyboardButton(text=f"Стр {page}/{total_pages}", callback_data="current_page"),
          InlineKeyboardButton(text="➡️ Вперёд", callback_data="next_page")]
     ]
 

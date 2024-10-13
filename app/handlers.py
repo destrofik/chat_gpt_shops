@@ -3,33 +3,39 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from aiogram.utils import markdown as md
 
+from app.training import process_user_input
 from database.connect import fio_insert, is_user_in_database, view_user_profile, edit_fio_profile, get_products, get_total_products
 from app.generators import gpt
 from app.interface import main_keyboard, profile_keyboard, call_manager_support, edit_keyboard, get_pagination_keyboard
 router = Router()
 
+
 class Generate(StatesGroup):
     text = State()
+
 
 class Registration(StatesGroup):
     check_user = State()
     entering_fio = State()
     entering_email = State()
 
+
 class Interface(StatesGroup):
     open_profile = State()
     edit_profile = State()
     open_menu = State()
     edit_fio = State()
-    
+
+
 class AssortmentState(StatesGroup):
     page = State()
+
 
 class GPT(StatesGroup):
     GPT_enable = State()
     GPT_disable = State()
+
 
 # СТАРТ
 
@@ -54,6 +60,7 @@ async def registration(message: Message, state: FSMContext):
         await message.answer('Введите Ваше ФИО')
         await state.set_state(Registration.entering_fio)
 
+
 @router.message(Registration.entering_fio, F.text)
 async def insert_fio(message: Message, state: FSMContext):
     await fio_insert(message.from_user.id, message.text)
@@ -61,13 +68,11 @@ async def insert_fio(message: Message, state: FSMContext):
     await state.clear()
 
 
-
 # МЕНЮ
 
 @router.message(StateFilter(None), Command('menu'))
 async def open_menu(message: Message):
     await message.answer('Запуск сообщения по команде /menu ', reply_markup=await main_keyboard())
-
 
 
 # ПРОФИЛЬ:
@@ -78,7 +83,7 @@ async def open_profile_menu(message: Message):
     await message.answer("Профиль: Выберите действие", reply_markup=kb)
 
 
-#Профиль -> Посмотреть профиль:
+# Профиль -> Посмотреть профиль:
 
 @router.message(lambda message: message.text == 'Посмотреть профиль')
 async def open_view_user_profile(message: Message):
@@ -90,7 +95,8 @@ async def open_view_user_profile(message: Message):
     else:
         await message.answer("Сначала Вам необходимо зарегистрироваться")
 
-#Профиль -> Редактировать профиль:
+
+# Профиль -> Редактировать профиль:
 
 @router.message(lambda message: message.text == 'Редактировать профиль')
 async def open_edit_menu(message: Message):
@@ -98,11 +104,12 @@ async def open_edit_menu(message: Message):
     await message.answer("Профиль: Выберите действие", reply_markup=kb)
 
 
-#Профиль -> Редактировать профиль -> Редактировать данные
+# Профиль -> Редактировать профиль -> Редактировать данные
 @router.message(lambda message: message.text == 'ФИО')
 async def open_edit_user_profile(message: Message, state: FSMContext):
     await message.answer('Введите новое ФИО')
     await state.set_state(Interface.edit_fio)
+
 
 @router.message(Interface.edit_fio, F.text)
 async def open_edit_user_profile(message: Message, state: FSMContext):
@@ -110,11 +117,13 @@ async def open_edit_user_profile(message: Message, state: FSMContext):
     await message.answer('Вы успешно изменили ФИО!')
     await state.clear()
 
+
 # Профиль -> Назад в меню
 # Обработчик для кнопки "Назад в меню", возвращает основную клавиатуру
 @router.message(lambda message: message.text == "В главное меню")
 async def go_back_to_main_menu(message: Message):
     await message.answer("Вы вернулись в главное меню", reply_markup=await main_keyboard())
+
 
 # Профиль -> Редактировать профиль -> Назад в профиль
 # Обработчик для кнопки "Назад в меню", возвращает основную клавиатуру
@@ -127,11 +136,11 @@ async def go_back_to_profile_menu(message: Message):
 async def send_products(message: Message, page: int, state: FSMContext):
     limit = 3
     user_data = await state.get_data()
-    
+
     # Получаем общее количество товаров один раз
     total_products = await get_total_products()
     total_pages = (total_products // limit) + (1 if total_products % limit else 0)
-    
+
     # Кешируем текущую страницу и общее количество
     user_data['total_pages'] = total_pages
     await state.update_data(**user_data)
@@ -154,7 +163,7 @@ async def send_products(message: Message, page: int, state: FSMContext):
     ])
 
     sent_message_id = user_data.get('sent_message_id')
-    
+
     if sent_message_id is None:
         sent_message = await message.answer(
             text=f"{product_list}\n",
@@ -172,10 +181,12 @@ async def send_products(message: Message, page: int, state: FSMContext):
         )
     await state.update_data(page=page)
 
+
 @router.message(Command('assortment'))
 async def assortment_command(message: Message, state: FSMContext):
-    #await state.set_state(AssortmentState.page)
+    # await state.set_state(AssortmentState.page)
     await send_products(message, page=1, state=state)
+
 
 @router.callback_query()
 async def handle_pagination(callback_query: CallbackQuery, state: FSMContext):
@@ -188,8 +199,9 @@ async def handle_pagination(callback_query: CallbackQuery, state: FSMContext):
         new_page = new_page if 1 <= new_page <= total_pages else (total_pages if new_page < 1 else 1)
 
         await send_products(callback_query.message, page=new_page, state=state)
-    
+
     await callback_query.answer()  # Подтверждаем обработку колбека
+
 
 # КОНТАКТЫ
 
@@ -198,16 +210,23 @@ async def show_contacts(message: Message):
     await message.answer('Открытие контактов', reply_markup=await call_manager_support())
 
 
-
 # Подключение GPT
 
 @router.message(Generate.text)
 async def generate_error(message: Message):
     await message.answer('Подождите, ищу ответ на предыдущий вопрос...')
 
-@router.message(StateFilter(None), F.text)
-async def generate(message: Message, state: FSMContext):
-    await state.set_state(Generate.text)
-    response = await gpt(message.text)
-    await message.answer(response.choices[0].message.content)
-    await state.clear()
+# @router.message(StateFilter(None), F.text)
+# async def generate(message: Message, state: FSMContext):
+#     await state.set_state(Generate.text)
+#     response = await gpt(message.text)
+#     await message.answer(response.choices[0].message.content)
+#     await state.clear()
+
+exception_list = ['профиль', 'заказы', 'контакты', 'о нас', Command('registration'), Command('start'), Command('menu')]
+
+@router.message(lambda message: message.text.lower() not in exception_list)
+async def handle_message(message: Message):
+    user_input = message.text
+    result = await process_user_input(user_input)
+    await message.answer(text=f"{result}\n", parse_mode="HTML")
