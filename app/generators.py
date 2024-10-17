@@ -11,7 +11,7 @@ client = AsyncOpenAI(api_key=os.getenv('AI_TOKEN'))
                         transport=httpx.HTTPTransport(local_address="0.0.0.0")
                     ))'''
 
-async def gpt(question):
+async def ask_gpt(question):
     response = await client.chat.completions.create(
         messages=[{"role": "user",
                   "content": str(question)}],

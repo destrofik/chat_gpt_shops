@@ -4,9 +4,9 @@ from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
-from app.training import process_user_input
-from database.connect import fio_insert, is_user_in_database, view_user_profile, edit_fio_profile, get_products, get_total_products
-from app.generators import gpt
+from app.training import handle_request
+from database.connect import fio_insert, is_user_in_database, view_user_profile, edit_fio_profile, get_products, get_total_products, compare_models, get_smartphone_details
+from app.generators import ask_gpt
 from app.interface import main_keyboard, profile_keyboard, call_manager_support, edit_keyboard, get_pagination_keyboard
 router = Router()
 
@@ -219,14 +219,37 @@ async def generate_error(message: Message):
 # @router.message(StateFilter(None), F.text)
 # async def generate(message: Message, state: FSMContext):
 #     await state.set_state(Generate.text)
-#     response = await gpt(message.text)
+#     response = await ask_gpt(message.text)
 #     await message.answer(response.choices[0].message.content)
 #     await state.clear()
 
-exception_list = ['профиль', 'заказы', 'контакты', 'о нас', Command('registration'), Command('start'), Command('menu')]
+# exception_list = ['профиль', 'заказы', 'контакты', 'о нас', Command('registration'), Command('start'), Command('menu')]
 
-@router.message(lambda message: message.text.lower() not in exception_list)
-async def handle_message(message: Message):
-    user_input = message.text
-    result = await process_user_input(user_input)
-    await message.answer(text=f"{result}\n", parse_mode="HTML")
+# Унифицированная функция для обработки всех типов запросов
+@router.message(StateFilter(None), F.text)
+async def generate(message: Message, state: FSMContext):
+    await state.set_state(Generate.text)
+    user_input = message.text.lower()
+
+    intent, models = handle_request(user_input)
+
+    if intent == "COMPARE" and len(models) >= 2:
+        # Если запрос о сравнении моделей
+        response = await compare_models(models[0], models[1])
+        await message.answer(text=f'{response}', parse_mode='MarkdownV2')
+
+    elif intent == "PRICE" and models:
+        # Если запрос о цене модели
+        response = await get_smartphone_details(models[0])
+        await message.answer(text=f'{response}', parse_mode='MarkdownV2')
+
+    else:
+        # Если намерение не распознано как запрос, связанный с моделями, перенаправляем в ChatGPT
+        response = await ask_gpt(user_input)
+        await message.answer(response.choices[0].message.content)
+
+    # Сбрасываем состояние
+    await state.clear()
+
+
+
