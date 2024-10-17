@@ -73,27 +73,74 @@ async def get_total_products():
 #     await connection.execute("UPDATE users_register SET address = $1",  str(address))
 #     await connection.close()
 
-async def get_product_from_db(product_name):
-    """
-    Извлекает информацию о продукте (цену и описание) из базы данных PostgreSQL.
 
-    Args:
-    - product_name: Название продукта (например, "iPhone 15").
-
-    Returns:
-    - Словарь с ценой и описанием продукта или сообщение об ошибке.
-    """
+# Функция для подключения к базе данных
+async def get_smartphone_info(query: str):
     connection = await asyncpg.connect(os.getenv('POSTGRESQL_URL'))
-
     try:
-        # Выполнение запроса к базе данных
-        query = "SELECT price, description FROM products WHERE LOWER(name) = LOWER($1)"
-        product_data = await connection.fetchrow(query, product_name)
-
-        if product_data:
-            return {"price": product_data['price'], "description": product_data['description']}
-        else:
-            #return {"price": ['Нет в наличии'], "description": product_data['description']}
-            return {"error": f"Продукт <strong>{product_name}</strong> не найден в базе данных."}
+        rows = await connection.fetch(query)
+        return rows
     finally:
         await connection.close()
+
+# Получение цены смартфона
+async def get_smartphone_price(model_name):
+    query = f"""
+    SELECT price FROM products
+    WHERE LOWER(name) = LOWER('{model_name}')
+    """
+    rows = await get_smartphone_info(query)
+
+    if rows:
+        return f"Цена {model_name}: {rows[0]['price']} рублей."
+    else:
+        return "К сожалению, я не нашел цену для указанной модели."
+
+
+# Получение информации о смартфоне
+async def get_smartphone_details(model_name):
+    query = f"""
+    SELECT name, memory, color, price, country, description FROM products
+    WHERE LOWER(name) = LOWER('{model_name}')
+    """
+    rows = await get_smartphone_info(query)
+
+    if rows:
+        response = (f"*Модель:* `{rows[0]['name']}`\n"
+                    f"*Память:* `{rows[0]['memory']} Gb`\n"
+                    f"*Цвет:* `{rows[0]['color']}`\n"
+                    f"*Цена:* `{rows[0]['price']} ₽`\n"
+                    f"*Страна производитель:* `{rows[0]['country']}`\n"
+                    f"*Описание:* `{rows[0]['description']}`")
+    else:
+        response = "К сожалению, я не нашел смартфон по вашему запросу."
+
+    return response
+
+
+# Сравнение смартфонов
+async def compare_models(model1, model2):
+    query = f"""
+    SELECT name, memory, color, price, country, description FROM products
+    WHERE LOWER(name) IN (LOWER('{model1}'), LOWER('{model2}'))
+    """
+
+    rows = await get_smartphone_info(query)
+
+    if len(rows) == 2:
+        response = (f"*Модель* `{rows[0]['name']}`:\n"
+                    f"*Память:* `{rows[0]['memory']} Gb`\n"
+                    f"*Цвет:* `{rows[0]['color']}`\n"
+                    f"*Цена:* `{rows[0]['price']} ₽`\n"
+                    f"*Страна:* `{rows[0]['country']}`\n"
+                    f"*Описание:* `{rows[0]['description']}`\n\n"
+                    f"*Модель* `{rows[1]['name']}:`\n"
+                    f"*Память:* `{rows[1]['memory']} Gb`\n"
+                    f"*Цвет:* `{rows[1]['color']}`\n"
+                    f"*Цена:* `{rows[1]['price']} ₽`\n"
+                    f"*Страна:* `{rows[1]['country']}`\n"
+                    f"*Описание:* `{rows[1]['description']}.`")
+    else:
+        response = "Не удалось найти информацию о смартфонах для сравнения."
+
+    return response
